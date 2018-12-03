@@ -1,7 +1,21 @@
 graphTxt = open('graph.txt', 'r')
-for line in graphTxt.readlines():
-	print(line.strip('\n').split(' '))
+graph = dict()
 
+node = ''
+for line in graphTxt.readlines():
+	line = line.strip('\n').split(' ') # ['Node', '1']
+
+	if line[0] == 'Node':
+		node = "".join(line) # 新的Node
+		graph[node] = []
+	else:
+		line[1] = int(line[1]) # 表示这是权重值
+		# 很傻逼 为什么Node的名字非得是数字而不能是字母呢
+		temp = graph[node]
+		temp.append(line)
+		graph[node] = temp
+
+print(graph)
 
 
 '''
