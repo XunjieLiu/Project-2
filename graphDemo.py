@@ -95,10 +95,9 @@ def dijkstra(graph, source):
 	return distance, previous
 
 dist, previous = dijkstra(graph, 'A')
-print(dist)
-print(previous)
-'''
-def get_route(destination, map, source='A'):
+
+
+def get_route(destination, map, source):
 	route = ''
 	next_node = destination
 	nodes = []
@@ -115,11 +114,8 @@ def get_route(destination, map, source='A'):
 
 	return route
 
-route = get_route('F', previous)
+route = get_route('F', previous, 'A')
 print(route)
-
-'''
-
 
 
 
