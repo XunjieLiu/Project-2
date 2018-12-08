@@ -1,0 +1,14 @@
+Node A
+B 6
+C 3
+Node B
+C 2
+D 5
+Node C
+D 3
+E 4
+Node D
+E 2
+F 3
+Node E
+F 5
