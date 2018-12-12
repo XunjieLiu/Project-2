@@ -1,26 +1,25 @@
 from heapq import *
 from copy import *
 
-def get_graph():
-	graphTxt = open('graphTest.txt', 'r')
+def get_graph(file):
+	graphTxt = open(file, 'r')
 	graph = dict() # {'1': [['2', 4], ['3', 2]], '2': [['3', 5]]}
 	# 真傻逼 给图也特么不给全 还得自己去创造节点
 
 	node = ''
 	for line in graphTxt.readlines():
-		line = line.strip('\n').split(' ') # ['Node', '1']
-
-		if line[0] == 'Node':
-			node = str(line[1]) # 新的Node
+		if line.find('Node') >= 0:
+			node = line.strip('\n').split(' ')[1]
+			node = str(node)
 			graph[node] = []
 		else:
+			line = line.strip('\n').split('\t') # ['Node', '1']
 			line[1] = int(line[1]) # 表示这是权重值
 			# 很傻逼 为什么Node的名字非得是数字而不能是字母呢
 			# 对不起 我错了
 			temp = graph[node]
 			temp.append(line)
 			graph[node] = temp
-
 	'''
 	老师给的文件里面，格式是 Node：[LinkedNode1, value], [LinkedNode2, value]
 	但特么，有些Node, 他只在LinkedNode提到了，压根就没声明，所以我特么还得自己去把这个图写完整
@@ -54,8 +53,6 @@ def get_graph():
 
 def takeFirst(elem): # 用于list排序
 	return elem[0]
-
-graph = get_graph()
 
 def dijkstra(graph, source):
 	distance = dict()
@@ -94,9 +91,6 @@ def dijkstra(graph, source):
 
 	return distance, previous
 
-dist, previous = dijkstra(graph, 'A')
-
-
 def get_route(destination, map, source):
 	route = ''
 	next_node = destination
@@ -114,10 +108,13 @@ def get_route(destination, map, source):
 
 	return route
 
-route = get_route('F', previous, 'A')
-print(route)
+if __name__ == '__main__':	
+	graph = get_graph('nodeExample.txt')
+	print(graph)
+	dist, previous = dijkstra(graph, '1')
 
-
+	route = get_route('3', previous, '1')
+	print(route)
 
 
 '''
