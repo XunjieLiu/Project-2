@@ -2,6 +2,7 @@ from socket import *
 from multiprocessing import Process
 from copy import *
 import json
+from graphDemo import *
 
 '''
 1. 读取第一个node, 并建立单独的文件，存储路由表
@@ -40,7 +41,7 @@ Desti: [Cost, Next_Node]
 def get_blank_table(graph):
 	table = deepcopy(graph)
 	for key, value in graph.items():
-		table[key] = [key, 1000000, None] # 初始化（清空）
+		table[key] = [1000000, None] # 初始化（清空）
 
 	return table
 
@@ -61,10 +62,43 @@ def init_routing_table(node, node_info, blank_table):
 	with open(file_name,"w") as f:
 		json.dump(blank_table, f) # 存入JSON文件
 
+def relax(routing_table1, routing_table2, node1, node2):
+	keys = routing_table1.keys()
+	extra_cost = routing_table1[node2][0] # 中转延时
+
+	for key in keys:
+		if key == node1 or key == node2:
+			continue
+		else:
+			original_cost = routing_table1[key][0]
+			new_cost = extra_cost + routing_table2[key][0] # relax过程
+			if original_cost > new_cost:
+				routing_table1[key][0] = new_cost
+				routing_table1[key][1] = node2
+
+def print_dict(dictionary):
+	for item in dictionary.items():
+		print(item)
+
+	print(" ")
+
 if __name__ == '__main__':
-	graph = read_file('graphTest.txt')
+	graph = get_graph('graphTest.txt')
+	
 	init(graph)
 
 	with open('A.json', 'r') as f:
-		load_f = json.load(f)
-		print(load_f)
+		A = json.load(f)
+
+	with open('B.json', 'r') as f:
+		B = json.load(f)
+
+	with open('C.json', 'r') as f:
+		C = json.load(f)
+
+	with open('D.json', 'r') as f:
+		D = json.load(f)
+
+	relax(A, B, 'A', 'B')
+	relax(A, C, 'A', 'C')
+	print_dict(A)
