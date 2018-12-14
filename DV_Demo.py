@@ -134,8 +134,9 @@ def run_process(router):
         connectionSocket, addr = mySocket.accept()
 
         # 使用pickle发送数据 第一步 接收数据
-        data = connectionSocket.recv(4096).decode() # [table, name]
+        data = connectionSocket.recv(4096) # [table, name]
         reply = pickle.loads(data)
+        print("I got data! ", reply)
         neighbors.remove(reply[1]) # 当neighbor是空的时候停止循环
 
         # 第二步 发送数据 以完成双向连接的目的
