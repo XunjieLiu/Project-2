@@ -1,8 +1,9 @@
 from socket import *
 from multiprocessing import Process
 from multiprocessing import Pool
+from threading import Lock
 from copy import *
-import json, struct, pickle
+import json, struct, pickle, threading, time
 from graphDemo import *
 
 '''
@@ -14,6 +15,7 @@ from graphDemo import *
 6. 规定：node数字小的向数字大的发起通信
 7. 规定：一旦某个节点的路由表得到更新，广播其新的路由表
 8. 规定：网络中没有路由表更新，停止程序
+
 
 修正：
 规定：一次循环是 每个Node向邻居交换表并更新（交换方式根据第六条规定）
@@ -46,7 +48,7 @@ class Router(object):
         self.name = node
         self.info = node_info
         self.routing_table = blank_table
-        self.port = 10000 + int(node)
+        self.port = 12000 + int(node)
 
     def write(self):
         file_name = self.name + '.json'
@@ -104,8 +106,7 @@ class Router(object):
         return neighbor
 
 
-        
-
+    
 # 字典是可变对象 如果只新建一个字典对象 然后循环把这个字典传进函数里面，那么始终只有一个字典
 def get_blank_table(graph):
     table = deepcopy(graph)
@@ -120,29 +121,105 @@ def print_dict(dictionary):
 
     print(" ")
 
+def get_neighbor_port(neighbors):
+    ports = []
+    for node in neighbors:
+        port = 10000 + int(node)
+        ports.append(port)
+
+    return ports
+
+def listen(port):
+    server_port = port
+    server_socket = socket(AF_INET, SOCK_STREAM)
+    server_socket.bind(('', serverPort))
+    server_socket.listen()
+
+    print("Start listening port: ", port)
+
+
 def run_process(router):
+    tables = []
+    lock = Lock()
+    print("This is my neighbors")
     neighbors = router.get_neighbors()
+    connect_to = [] # Node数字小的向大的连接
+    connect_in = []
+    for neighbor in neighbors:
+        if int(neighbor) > int(router.get_name()):
+            connect_to.append(neighbor)
+        else:
+            connect_in.append(neighbor)
+    print(neighbors)
 
-    port = router.get_port()
-    mySocket = socket(AF_INET, SOCK_STREAM)
-    mySocket.bind(('', port))
-    mySocket.listen()
+    '''
+    Listener 负责监听 connect_in数组标记了理应发送过来连接的Node(数字比它小的)， 一旦此数组为空，则结束线程
+    Messager 负责发送数据，connect_to数组标记了应该发送的Node（数字比他大的），一旦此数组为空，结束线程
+    Listener在接收数据之后 立刻发送本身的路由表
+    Messager在发送本身路由表之后 立刻接收对方路由表
+    '''
 
-    print("Start listening")
+    class Listener(threading.Thread):
+        def __init__(self, port):
+            threading.Thread.__init__(self)
+            self.port = port
 
-    while True:
-        connectionSocket, addr = mySocket.accept()
+        def run(self):
+            server_socket = socket(AF_INET, SOCK_STREAM)
 
-        # 使用pickle发送数据 第一步 接收数据
-        data = connectionSocket.recv(4096) # [table, name]
-        reply = pickle.loads(data)
-        print("I got data! ", reply)
-        neighbors.remove(reply[1]) # 当neighbor是空的时候停止循环
+            server_socket.bind(('', self.port))
 
-        # 第二步 发送数据 以完成双向连接的目的
-        msg = [router.get_routing_table(), router.get_name()]
-        packedData = pickle.dumps(msg)
-        connectionSocket.sendall(packedData)
+            server_socket.listen()
+            print("Start listening")
+
+            while len(connect_in) > 0:
+                connectionSocket, addr = server_socket.accept()
+
+                # 使用pickle发送数据 第一步 接收数据
+                data = pickle.loads(connectionSocket.recv(4096)) # [name, table] 接收到路由表
+                tables.append(data)
+
+                reply = [router.get_name(), router.get_routing_table()] # 发送自身路由表
+                reply = pickle.dumps(reply)
+
+                connectionSocket.sendall(reply)
+                connect_in.remove(data[0]) # 理应的链接都收到了 就停止监听
+
+            server_socket.close()
+
+
+    class Messager(threading.Thread):
+        def __init__(self):
+            threading.Thread.__init__(self)
+
+        def run(self):
+            for node in connect_to:
+                print("Node: ", node) # 规定只连接大的Node， 实现双向连接 
+                new_socket = socket(AF_INET, SOCK_STREAM)
+                server = '127.0.0.1'
+                while True:      
+                    try:
+                        new_socket.connect((server, new_port))
+                        print("Node %s success"%node)
+                        msg = [router.get_name(), router.get_routing_table()] # 发送自身路由表
+                        msg = pickle.dumps(msg)
+
+                        new_socket.sendall(msg)
+
+                        reply = pickle.loads(new_socket.recv(4096))
+                        new_socket.close()
+                        break
+                    except Exception as e:
+                        print("Connect failed")
+                        time.sleep(2)
+
+    print("Process %s start!"%router.get_name())
+
+    listen_thread = Listener(router.get_port())
+    messager_thread = Messager()
+
+    listen_thread.start()
+    messager_thread.start()
 
 if __name__ == '__main__':
     Nodes = []
@@ -152,45 +229,11 @@ if __name__ == '__main__':
         new_node.init_routing_table()
         Nodes.append(new_node)
 
-    print(Nodes[0].get_neighbors())
+    # print(Nodes[0].get_neighbors())
 
-    '''
-    print('Child process will start.')
+    test_router = Nodes[0]
+    # print(test_router.get_port())
 
-    pool = Pool(len(Nodes))
-    pool.map(run_process, Nodes)
-    pool.close()
-    pool.join()
-    
-    print('Child process end.')
-    '''
-
-    '''
-    print(Nodes[0].get_name())
-    print_dict(Nodes[0].get_routing_table())
-    Nodes[0].relax(Nodes[1].get_routing_table(), Nodes[1].get_name())
-
-    print_dict(Nodes[0].get_routing_table())
-    '''
-    
-    # init(graph)
-    '''
-    with open('A.json', 'r') as f:
-        A = json.load(f)
-
-    with open('B.json', 'r') as f:
-        B = json.load(f)
-
-    with open('C.json', 'r') as f:
-        C = json.load(f)
-
-    with open('D.json', 'r') as f:
-        D = json.load(f)
-
-    print(relax(A, B, 'A', 'B'))
-    relax(A, C, 'A', 'C')
-    relax(A, D, 'A', 'D')
-    print(relax(A, D, 'A', 'D'))
-
-    print_dict(A)
-    '''
+    for router in Nodes:
+        process = Process(target=run_process, args=(router, ))
+        process.start()
