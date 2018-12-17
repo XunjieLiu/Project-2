@@ -55,6 +55,11 @@ class Router(object):
         with open(file_name,"w") as f:
             json.dump(self.routing_table, f) # 存入JSON文件
 
+    def read(self):
+        file_name = self.name + '.json'
+        with open(file_name,"r") as f:
+            self.routing_table = json.load(f)
+
     def init_routing_table(self):
         for edge in self.info:
             neighbor = edge[0]
@@ -67,6 +72,7 @@ class Router(object):
         Router.write(self)
 
     def relax(self, routing_table, name):
+        Router.read(self) # 更新
         if_change = False
         keys = self.routing_table.keys()
         extra_cost = self.routing_table[name][0] # 中转延时
@@ -86,6 +92,7 @@ class Router(object):
         return if_change
 
     def get_routing_table(self):
+        Router.read(self)
         return self.routing_table
 
     def get_name(self):
@@ -104,8 +111,6 @@ class Router(object):
             neighbor.append(edge[0])
 
         return neighbor
-
-
     
 # 字典是可变对象 如果只新建一个字典对象 然后循环把这个字典传进函数里面，那么始终只有一个字典
 def get_blank_table(graph):
@@ -115,12 +120,6 @@ def get_blank_table(graph):
 
     return table
 
-def print_dict(dictionary):
-    for item in dictionary.items():
-        print(item)
-
-    print(" ")
-
 def get_neighbor_port(neighbors):
     ports = []
     for node in neighbors:
@@ -129,19 +128,9 @@ def get_neighbor_port(neighbors):
 
     return ports
 
-def listen(port):
-    server_port = port
-    server_socket = socket(AF_INET, SOCK_STREAM)
-    server_socket.bind(('', serverPort))
-    server_socket.listen()
-
-    print("Start listening port: ", port)
-
-
 def run_process(router):
     tables = []
     lock = Lock()
-    print("This is my neighbors")
     neighbors = router.get_neighbors()
     connect_to = [] # Node数字小的向大的连接
     connect_in = []
@@ -150,7 +139,6 @@ def run_process(router):
             connect_to.append(neighbor)
         else:
             connect_in.append(neighbor)
-    print(neighbors)
 
     '''
     Listener 负责监听 connect_in数组标记了理应发送过来连接的Node(数字比它小的)， 一旦此数组为空，则结束线程
@@ -194,11 +182,12 @@ def run_process(router):
 
         def run(self):
             for node in connect_to:
-                print("Node: ", node) # 规定只连接大的Node， 实现双向连接 
+                # print("Node: ", node) # 规定只连接大的Node， 实现双向连接 
                 new_socket = socket(AF_INET, SOCK_STREAM)
                 server = '127.0.0.1'
                 while True:      
                     try:
+                        new_port = 12000 + int(node)
                         new_socket.connect((server, new_port))
                         print("Node %s success"%node)
                         msg = [router.get_name(), router.get_routing_table()] # 发送自身路由表
@@ -207,10 +196,11 @@ def run_process(router):
                         new_socket.sendall(msg)
 
                         reply = pickle.loads(new_socket.recv(4096))
+                        tables.append(reply)
                         new_socket.close()
                         break
                     except Exception as e:
-                        print("Connect failed")
+                        print("Waiting to reconnect")
                         time.sleep(2)
 
     print("Process %s start!"%router.get_name())
@@ -219,21 +209,61 @@ def run_process(router):
     messager_thread = Messager()
 
     listen_thread.start()
+    listen_thread.join()
     messager_thread.start()
+    messager_thread.join()
 
-if __name__ == '__main__':
+    for table in tables:
+        name = table[0]
+        routing_table = table[1]
+        if_change = router.relax(routing_table, name)
+
+def main_process(Nodes):
+    for router in Nodes:
+        process = Process(target=run_process, args=(router, ))
+        process.start()
+
+def main():
     Nodes = []
     graph = get_graph('graphTest.txt')
+    print("Initializing.......")
     for key, value in graph.items():
         new_node = Router(key, value, get_blank_table(graph))
         new_node.init_routing_table()
         Nodes.append(new_node)
 
-    # print(Nodes[0].get_neighbors())
+    for i in range(len(Nodes) - 1):
+        print("---------------Round %d------------------"%(i+1))
+        p = Process(target=main_process, args=(Nodes, ))
+        p.start()
+        p.join()
 
-    test_router = Nodes[0]
-    # print(test_router.get_port())
+    print("------------------End-----------------------")
 
-    for router in Nodes:
-        process = Process(target=run_process, args=(router, ))
-        process.start()
+
+if __name__ == '__main__':
+    main()
+    '''
+    for i in range(len(Nodes) - 1):
+        p = Process(target=main_process, args=(Nodes, ))
+        p.start()
+        p.join()
+    '''
+        
+    with open('1.json', 'r') as f:
+        print(json.load(f))
+
+    with open('2.json', 'r') as f:
+        print(json.load(f))
+
+    with open('3.json', 'r') as f:
+        print(json.load(f))
+
+    with open('4.json', 'r') as f:
+        print(json.load(f))
+
+    with open('5.json', 'r') as f:
+        print(json.load(f))
+
+    with open('6.json', 'r') as f:
+        print(json.load(f))
