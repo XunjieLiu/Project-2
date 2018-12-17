@@ -1,27 +1,13 @@
+from heapq import *
+from copy import *
 from socket import *
+from copy import *
 from multiprocessing import Process
 from multiprocessing import Pool
 from threading import Lock
-from copy import *
 import json, struct, pickle, threading, time
-from graphDemo import *
 
-'''
-1. 读取第一个node, 并建立单独的文件，存储路由表
-2. 路由表该咋存储呢
-3. 不同进程之间交换路由表
-4. 通过Socket进行通信
-5. 规定：node数字 +１０００为端口号
-6. 规定：node数字小的向数字大的发起通信
-7. 规定：一旦某个节点的路由表得到更新，广播其新的路由表
-8. 规定：网络中没有路由表更新，停止程序
-
-
-修正：
-规定：一次循环是 每个Node向邻居交换表并更新（交换方式根据第六条规定）
-循环Node - 1 次（根据Bellman-ford算法）
-'''
-def read_file(file):
+def get_graph(file):
     graphTxt = open(file, 'r')
     graph = dict() # {'1': [['2', 4], ['3', 2]], '2': [['3', 5]]}
 
@@ -34,15 +20,91 @@ def read_file(file):
         else:
             line = line.strip('\n').split('\t') # ['Node', '1']
             line[1] = int(line[1]) # 表示这是权重值
+
             temp = graph[node]
             temp.append(line)
             graph[node] = temp
+    # 补全
+    temp = deepcopy(graph) # python是引用传递，直接用等号不管用
+    for key, value in temp.items():
+        for edge in value:
+            if edge[0] not in graph: # 如果graph没有，说明这是首次判断，添加空的进去
+                graph[edge[0]] = [] # 在下次if中添加值
+
+            if edge[0] not in temp: # 如果temp没有，说明这个edge是新的，但是在上一个if里面已经初始化了
+                newEdge = [key, edge[1]] 
+                tempNode = graph[edge[0]]
+                tempNode.append(newEdge)
+                graph[edge[0]] = tempNode
+
+    # 由于这连通的双向图 所以可能有的节点没有标全，比如Node1标明连接Node2, 但是在Node2里面并没有标明
+    temp = deepcopy(graph)
+    for key, value in temp.items():
+        for edge in value:
+            linked_node = edge[0]
+            linked_node_edges = graph[linked_node]
+            newEdge = [key, edge[1]]
+            if newEdge not in linked_node_edges:
+                graph[linked_node].append(newEdge)
 
     return graph
-'''
-路由表：
-Desti: [Cost, Next_Node]
-'''
+
+def takeFirst(elem): # 用于list排序
+    return elem[0]
+
+def dijkstra(graph, source='1'):
+    distance = dict()
+    previous = dict()
+    distance[source] = 0
+    heap = [] # 最小堆
+    keys = []
+
+    for i in graph.keys():
+        heappush(keys, i)
+
+    for key in keys:
+        if key != source:
+            distance[key] = 10000000
+            previous[key] = None
+        heappush(heap, [distance[key], key]) 
+
+    while len(heap) > 0:
+        u = heappop(heap) # u = [dist[key], key]
+
+        nodes = graph[u[1]] # graph = {'Node1': [['2', 4], ['3', 2]], 'Node2': [['3', 5]]}
+        # nodes = [['2', 4], ['3', 2]]
+        for neighbor in nodes: # neighbor = ['3', 2] for each neighbor v of u
+            alt = distance[u[1]] + neighbor[1] # alt := dist[u] + length(u, v), 这里是计算source到V的距离
+            if alt < distance[neighbor[0]]:
+                # 算法里面distance是一个优先队列，但字典没法实现这一点
+                # 所以每次修改一次值，相对应的heap里面的值就要修改一次
+                oldItem = [distance[neighbor[0]], neighbor[0]]
+                distance[neighbor[0]] = alt
+                previous[neighbor[0]] = u[1]
+                newItem = [alt, neighbor[0]] # [value, key]
+                heap.remove(oldItem)
+                heappush(heap, newItem)
+            heap.sort(key=takeFirst) #以防万一　再排序一次
+
+    return distance, previous
+
+def get_route(destination, previous, source='1'):
+    route = ''
+    next_node = destination
+    nodes = []
+    while next_node != source:
+        next_node = previous[next_node]
+        nodes.append(next_node)
+
+    nodes = nodes[::-1]
+
+    for node in nodes:
+        route+=(node + '->')
+
+    route += destination
+
+    return route
+
 class Router(object):
     def __init__(self, node, node_info, blank_table):
         self.name = node
@@ -140,13 +202,6 @@ def run_process(router):
         else:
             connect_in.append(neighbor)
 
-    '''
-    Listener 负责监听 connect_in数组标记了理应发送过来连接的Node(数字比它小的)， 一旦此数组为空，则结束线程
-    Messager 负责发送数据，connect_to数组标记了应该发送的Node（数字比他大的），一旦此数组为空，结束线程
-    Listener在接收数据之后 立刻发送本身的路由表
-    Messager在发送本身路由表之后 立刻接收对方路由表
-    '''
-
     class Listener(threading.Thread):
         def __init__(self, port):
             threading.Thread.__init__(self)
@@ -174,7 +229,6 @@ def run_process(router):
                 connect_in.remove(data[0]) # 理应的链接都收到了 就停止监听
 
             server_socket.close()
-
 
     class Messager(threading.Thread):
         def __init__(self):
@@ -240,30 +294,31 @@ def main_2():
 
     print("------------------End-----------------------")
 
+def main_1():
+    graph = get_graph('graphTest.txt')
+    dist, previous = dijkstra(graph)
 
-if __name__ == '__main__':
-    main_2()
-    '''
-    for i in range(len(Nodes) - 1):
-        p = Process(target=main_process, args=(Nodes, ))
-        p.start()
-        p.join()
-    '''
-        
-    with open('1.json', 'r') as f:
-        print(json.load(f))
+    route_map = dict()
 
-    with open('2.json', 'r') as f:
-        print(json.load(f))
+    for node in graph.keys():
+        if node == '1':
+            continue
+        else:
+            route = get_route(node, previous)
+            cost = dist[node]
 
-    with open('3.json', 'r') as f:
-        print(json.load(f))
+            print("From 1, To %s, Path: %s, Minimum Cost: %d"%(node, route, cost))
 
-    with open('4.json', 'r') as f:
-        print(json.load(f))
+            route_map[node] = [route, cost]
 
-    with open('5.json', 'r') as f:
-        print(json.load(f))
+    print("\nRead route information into JSON file, with name as 'Route_Map.json'\n")
 
-    with open('6.json', 'r') as f:
-        print(json.load(f))
+    file_name = 'Route_Map.json'
+
+    with open(file_name, 'w') as f:
+        json.dump(route_map, f)
+
+if __name__ == '__main__':  
+    main_1() # program for question 1 and question 2
+
+    main_2() # program for question 2
