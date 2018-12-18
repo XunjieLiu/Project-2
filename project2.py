@@ -5,7 +5,7 @@ from copy import *
 from multiprocessing import Process
 from multiprocessing import Pool
 from threading import Lock
-import json, struct, pickle, threading, time
+import json, struct, pickle, threading, time, sys
 
 def get_graph(file):
     graphTxt = open(file, 'r')
@@ -277,9 +277,10 @@ def main_process(Nodes):
         process = Process(target=run_process, args=(router, ))
         process.start()
 
-def main_2():
+def main_2(fileName):
+    print("-------------------------Part 2 Start------------------------------")
     Nodes = []
-    graph = get_graph('graphTest.txt')
+    graph = get_graph(fileName)
     print("Initializing.......")
     for key, value in graph.items():
         new_node = Router(key, value, get_blank_table(graph))
@@ -292,10 +293,12 @@ def main_2():
         p.start()
         p.join()
 
-    print("------------------End-----------------------")
+    print("-------------------------Part 2 End------------------------------")
 
-def main_1():
-    graph = get_graph('graphTest.txt')
+
+def main_1(fileName):
+    print("\n\n-------------------------Part 1 Start------------------------------")
+    graph = get_graph(fileName)
     dist, previous = dijkstra(graph)
 
     route_map = dict()
@@ -317,8 +320,10 @@ def main_1():
 
     with open(file_name, 'w') as f:
         json.dump(route_map, f)
+    print("-------------------------Part 1 End------------------------------\n\n\n")
 
-if __name__ == '__main__':  
-    main_1() # program for question 1 and question 2
+if __name__ == '__main__':
+    file_name = sys.argv[1] 
+    main_1(file_name) # program for question 1 and question 2
 
-    main_2() # program for question 2
+    main_2(file_name) # program for question 2

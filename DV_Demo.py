@@ -249,6 +249,10 @@ if __name__ == '__main__':
         p.start()
         p.join()
     '''
+    '''
+    Node1
+    [['3', 5] ['4', 2]] = info
+    '''
         
     with open('1.json', 'r') as f:
         print(json.load(f))

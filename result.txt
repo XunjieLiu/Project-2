@@ -1,0 +1,48 @@
+The minimum cost form 1 to each point are shown blow
+From 1 to 1 :0      The path is:1->1
+From 1 to 3 :3      The path is:1->3
+From 1 to 2 :5      The path is:1->3->2
+From 1 to 4 :6      The path is:1->3->4
+From 1 to 5 :7      The path is:1->3->5
+From 1 to 6 :9      The path is:1->3->4->6
+
+The minimum cost form 2 to each point are shown blow
+From 2 to 2 :0      The path is:2->2
+From 2 to 3 :2      The path is:2->3
+From 2 to 1 :5      The path is:2->3->1
+From 2 to 4 :5      The path is:2->4
+From 2 to 5 :6      The path is:2->3->5
+From 2 to 6 :8      The path is:2->4->6
+
+The minimum cost form 3 to each point are shown blow
+From 3 to 3 :0      The path is:3->3
+From 3 to 2 :2      The path is:3->2
+From 3 to 1 :3      The path is:3->1
+From 3 to 4 :3      The path is:3->4
+From 3 to 5 :4      The path is:3->5
+From 3 to 6 :6      The path is:3->4->6
+
+The minimum cost form 4 to each point are shown blow
+From 4 to 4 :0      The path is:4->4
+From 4 to 5 :2      The path is:4->5
+From 4 to 3 :3      The path is:4->3
+From 4 to 6 :3      The path is:4->6
+From 4 to 2 :5      The path is:4->2
+From 4 to 1 :6      The path is:4->3->1
+
+The minimum cost form 5 to each point are shown blow
+From 5 to 5 :0      The path is:5->5
+From 5 to 4 :2      The path is:5->4
+From 5 to 3 :4      The path is:5->3
+From 5 to 6 :5      The path is:5->6
+From 5 to 2 :6      The path is:5->3->2
+From 5 to 1 :7      The path is:5->3->1
+
+The minimum cost form 6 to each point are shown blow
+From 6 to 6 :0      The path is:6->6
+From 6 to 4 :3      The path is:6->4
+From 6 to 5 :5      The path is:6->5
+From 6 to 3 :6      The path is:6->4->3
+From 6 to 2 :8      The path is:6->4->2
+From 6 to 1 :9      The path is:6->4->3->1
+
